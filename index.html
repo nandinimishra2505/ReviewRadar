@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+ <div><p class="eyebrow">CUSTOMER EXPERIENCE ANALYTICS</p><h1>Turn customer feedback<br><span>into clear action.</span></h1>
+ <p class="muted">Understand sentiment, uncover recurring issues and spot emerging customer concerns.</p></div>
+ <div class="upload-card"><h3>Import customer reviews</h3><form action="/upload" method="post" enctype="multipart/form-data">
+ <input type="file" name="file" accept=".csv" required><button>Analyze CSV</button></form>
+ <a class="sample" href="/sample">Load sample dataset instead →</a><small>CSV needs a review column. date, product and rating are optional.</small></div>
+</section>
+<section class="stats">
+ <div class="stat"><small>Total reviews</small><strong>{{ stats.total }}</strong></div>
+ <div class="stat"><small>Positive reviews</small><strong class="green">{{ stats.positive }}</strong></div>
+ <div class="stat"><small>Negative reviews</small><strong class="red">{{ stats.negative }}</strong></div>
+ <div class="stat"><small>Negative share</small><strong>{{ ((stats.negative / stats.total * 100)|round|int) if stats.total else 0 }}%</strong></div>
+</section>
+{% if insights %}
+<section class="grid">
+ <div class="panel"><h2>Sentiment distribution</h2><canvas id="sentimentChart"></canvas></div>
+ <div class="panel"><h2>Top complaint categories</h2><canvas id="categoryChart"></canvas></div>
+ <div class="panel wide"><div class="panel-heading"><h2>AI feedback brief</h2><span class="tag">INSIGHTS</span></div><p class="summary">{{ summary }}</p></div>
+ <div class="panel wide"><h2>Complaint priority queue</h2>
+ {% if insights.priorities %}<div class="table-wrap"><table><thead><tr><th>Category</th><th>Complaints</th><th>Avg. severity</th><th>Growth</th><th>Priority score</th></tr></thead><tbody>
+ {% for item in insights.priorities %}<tr><td><b>{{ item.category }}</b></td><td>{{ item.count }}</td><td>{{ item.severity }}/3</td><td>{{ item.growth }}%</td><td><span class="score">{{ item.score }}</span></td></tr>{% endfor %}
+ </tbody></table></div>{% else %}<p class="muted">No negative complaints detected.</p>{% endif %}</div>
+ <div class="panel"><h2>Emerging issue alerts</h2>
+ {% if insights.anomalies %}{% for a in insights.anomalies %}<div class="alert"><b>{{ a.date }}</b><span>{{ a.negative_reviews }} negative reviews · baseline {{ a.baseline }}</span></div>{% endfor %}{% else %}<p class="muted">No unusual negative-review spikes detected in the available time series.</p>{% endif %}</div>
+ <div class="panel"><h2>Recurring topics</h2>{% for t in insights.topics %}<div class="topic"><span>{{ t.name }}</span><b>{{ t.count }}</b></div>{% else %}<p class="muted">No topics yet.</p>{% endfor %}</div>
+</section>
+<section class="panel review-panel"><div class="panel-heading"><h2>Recent analyzed reviews</h2><form action="/clear" method="post" onsubmit="return confirm('Delete all reviews?')"><button class="danger small">Clear data</button></form></div>
+<div class="table-wrap"><table><thead><tr><th>Review</th><th>Sentiment</th><th>Category</th><th>Topic</th><th>Date</th></tr></thead><tbody>
+{% for r in reviews %}<tr><td class="review-text">{{ r.review }}</td><td><span class="pill {{ r.sentiment|lower }}">{{ r.sentiment }}</span></td><td>{{ r.category }}</td><td>{{ r.topic }}</td><td>{{ r.date }}</td></tr>{% endfor %}
+</tbody></table></div></section>
+<script>
+const sentiment = {{ insights.sentiment|tojson }};
+const categories = {{ insights.categories|tojson }};
+new Chart(document.getElementById('sentimentChart'), {type:'doughnut',data:{labels:Object.keys(sentiment),datasets:[{data:Object.values(sentiment),backgroundColor:['#36b37e','#f05d6c','#f5b942'],borderWidth:0}]},options:{plugins:{legend:{position:'bottom'}},cutout:'68%'}});
+new Chart(document.getElementById('categoryChart'), {type:'bar',data:{labels:categories.map(x=>x.name),datasets:[{data:categories.map(x=>x.count),backgroundColor:'#7667e8',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}},x:{grid:{display:false}}}}});
+</script>
+{% else %}
+<section class="empty panel"><div class="empty-icon">✦</div><h2>Your feedback intelligence workspace is ready</h2><p class="muted">Load the sample dataset or upload a CSV to generate your first analysis.</p></section>
+{% endif %}
+{% endblock %}
